@@ -64,19 +64,28 @@
         //这里的objectAtIndex: 应该是safe_objectAtIndex:
         [singCls swizzleSelector:@selector(objectAtIndex:) withSelector:@selector(safe_singleObjectAtIndex:)];
         
+        //iOS 11以前,下标方式,objectAtIndexedSubscript:调用无效后,会尝试调用objectAtIndex:
+        //iOS 11以后,下标方式,objectAtIndexedSubscript:,如果不交换实现做容错处理,会崩溃;
+        [cls swizzleSelector:@selector(objectAtIndexedSubscript:) withSelector:@selector(safe_objectAtIndexedSubscript:)];
         //add more...
     });
 }
 
 - (id)safe_objectAtIndex:(NSUInteger)index {
     
-    //array[index]快速访问方式,也会调取该方法
-
     if (index < self.count) {
         
         return [self safe_objectAtIndex:index];
     }
     NSLog(@"NSArray objectAtIndex: 失败");
+    return nil;
+}
+- (id)safe_objectAtIndexedSubscript:(NSUInteger)index {
+    
+    if (index < self.count) {
+        return [self safe_objectAtIndexedSubscript:index];
+    }
+    NSLog(@"NSArray[] 失败");
     return nil;
 }
 - (id)safe_singleObjectAtIndex:(NSUInteger)index {
@@ -100,6 +109,7 @@
         
         Class cls = NSClassFromString(@"__NSArrayM");
         [cls swizzleSelector:@selector(objectAtIndex:) withSelector:@selector(safe_objectAtIndex:)];
+        [cls swizzleSelector:@selector(objectAtIndexedSubscript:) withSelector:@selector(safe_objectAtIndexedSubscript:)];
         [cls swizzleSelector:@selector(addObject:) withSelector:@selector(safe_addObject:)];
         [cls swizzleSelector:@selector(removeObjectAtIndex:) withSelector:@selector(safe_removeObjectAtIndex:)];
         [cls swizzleSelector:@selector(replaceObjectAtIndex:withObject:) withSelector:@selector(safe_replaceObjectAtIndex:withObject:)];
@@ -113,6 +123,14 @@
         return [self safe_objectAtIndex:index];
     }
     NSLog(@"NSMutableArray objectAtIndex: 失败");
+    return nil;
+}
+- (id)safe_objectAtIndexedSubscript:(NSUInteger)index {
+    
+    if (index < self.count) {
+        return [self safe_objectAtIndexedSubscript:index];
+    }
+    NSLog(@"NSMutableArray[] 失败");
     return nil;
 }
 - (void)safe_addObject:(id)anObject {
@@ -197,7 +215,6 @@
         [cls swizzleSelector:@selector(substringWithRange:) withSelector:@selector(safe_substringWithRange:)];
        
         [cls swizzleSelector:@selector(stringByAppendingString:) withSelector:@selector(safe_stringByAppendingString:)];
-        [cls swizzleSelector:@selector(stringByAppendingFormat:) withSelector:@selector(safe_stringByAppendingFormat:)];
         
         [cls swizzleSelector:@selector(stringByReplacingCharactersInRange:withString:) withSelector:@selector(safe_stringByReplacingCharactersInRange:withString:)];
         [cls swizzleSelector:@selector(stringByReplacingOccurrencesOfString:withString:options:range:) withSelector:@selector(safe_stringByReplacingOccurrencesOfString:withString:options:range:)];
@@ -252,18 +269,7 @@
     }
     
 }
-- (NSString *)safe_stringByAppendingFormat:(NSString *)format, ... {
-    
-    NSString *str = self;
-    @try {
-        str = [self safe_stringByAppendingFormat:format];
-    } @catch (NSException *exception) {
-        NSLog(@"NSString stringByAppendingFormat: 失败");
-    } @finally {
-        return str;
-    }
-    
-}
+
 - (NSString *)safe_stringByReplacingOccurrencesOfString:(NSString *)target withString:(NSString *)replacement options:(NSStringCompareOptions)options range:(NSRange)searchRange {
     
     NSString *newStr = self;
