@@ -18,13 +18,19 @@
     Method originMethod = class_getInstanceMethod(cls, originSelector);
     Method swizzledMethod = class_getInstanceMethod(cls, swizzledSelector);
     
-    //尝试添加 originSelector -> swizzledMethod
-    BOOL addSucceed = class_addMethod(cls, originSelector, method_getImplementation(swizzledMethod), method_getTypeEncoding(swizzledMethod));
+    //添加 SEL:originSelector -> IMP(swizzledMethod),已存在则返回失败
+    BOOL addSucceed = class_addMethod(cls, originSelector, method_getImplementation(swizzledMethod), method_getTypeEncoding(swizzledMethod));//encoding:@12@0:4I8
+
+    //针对数组为例,只有 -objectAtIndexedSubscript:方法执行到 if 语句了,其余的情况执行的是 else 语句🤔
     if (addSucceed) {
-        //添加成功,执行替换 swizzledSelector -> originMethod,完成交换操作
+        //替换 SEL:swizzledSelector -> IMP(originMethod),完成交换操作
         class_replaceMethod(cls, swizzledSelector, method_getImplementation(originMethod), method_getTypeEncoding(originMethod));
+        NSLog(@"%@ %@ 0",cls,NSStringFromSelector(originSelector));
+
     } else {
-        //直接交换
+        //已存在,直接交换
+        NSLog(@"%@ %@ 1",cls,NSStringFromSelector(originSelector));
+
         method_exchangeImplementations(originMethod, swizzledMethod);
     }
 }
