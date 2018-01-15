@@ -18,15 +18,15 @@
     Method originMethod = class_getInstanceMethod(cls, originSelector);
     Method swizzledMethod = class_getInstanceMethod(cls, swizzledSelector);
     
-//    //尝试添加 originSelector -> swizzledMethod
-//    BOOL addSucceed = class_addMethod(cls, originSelector, method_getImplementation(swizzledMethod), method_getTypeEncoding(swizzledMethod));
-//    if (addSucceed) {
-//        //添加成功,执行替换 swizzledSelector -> originMethod,完成交换操作
-//        class_replaceMethod(cls, swizzledSelector, method_getImplementation(originMethod), method_getTypeEncoding(originMethod));
-//    } else {
+    //尝试添加 originSelector -> swizzledMethod
+    BOOL addSucceed = class_addMethod(cls, originSelector, method_getImplementation(swizzledMethod), method_getTypeEncoding(swizzledMethod));
+    if (addSucceed) {
+        //添加成功,执行替换 swizzledSelector -> originMethod,完成交换操作
+        class_replaceMethod(cls, swizzledSelector, method_getImplementation(originMethod), method_getTypeEncoding(originMethod));
+    } else {
         //直接交换
         method_exchangeImplementations(originMethod, swizzledMethod);
-//    }
+    }
 }
 
 + (void)swizzleClassSelector:(SEL)originSelector withClassSelector:(SEL)swizzledSelector {
@@ -54,11 +54,14 @@
     
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        
-        //objc_getClass("__NSArrayI") = NSClassFromString(@"__NSArrayI"),两种方式获取不可变数组的类
-        Class cls = NSClassFromString(@"__NSArrayI");
-        Class singCls = NSClassFromString(@"__NSSingleObjectArrayI");
-        //不能使用 [self class],因为 NSArray 是个类簇,不是很懂
+
+        /*两种方式获取不可变数组的类
+          objc_getClass("__NSArrayI") = NSClassFromString(@"__NSArrayI")
+          不能使用 [self class],因为 NSArray 是个类簇,不是很懂
+         */
+
+        Class cls = objc_getClass("__NSArrayI");
+        Class singCls = objc_getClass("__NSSingleObjectArrayI");
         [cls swizzleSelector:@selector(objectAtIndex:) withSelector:@selector(safe_objectAtIndex:)];
         
         //这里的objectAtIndex: 应该是safe_objectAtIndex:
@@ -67,7 +70,9 @@
         //iOS 11以前,下标方式,objectAtIndexedSubscript:调用无效后,会尝试调用objectAtIndex:
         //iOS 11以后,下标方式,objectAtIndexedSubscript:,如果不交换实现做容错处理,会崩溃;
         [cls swizzleSelector:@selector(objectAtIndexedSubscript:) withSelector:@selector(safe_objectAtIndexedSubscript:)];
-        //add more...
+        
+        Class emptyCls = objc_getClass("__NSArray0");
+        [emptyCls swizzleSelector:@selector(objectAtIndex:) withSelector:@selector(safe_emptyObjectAtIndex:)];
     });
 }
 
@@ -82,11 +87,16 @@
 }
 - (id)safe_objectAtIndexedSubscript:(NSUInteger)index {
     
-    if (index < self.count) {
-        return [self safe_objectAtIndexedSubscript:index];
+    id object = nil;
+    @try {
+        object = [self safe_objectAtIndexedSubscript:index];
     }
-    NSLog(@"NSArray[] 失败");
-    return nil;
+    @catch (NSException *exception) {
+        NSLog(@"NSArray[] 失败");
+    }
+    @finally {
+        return object;
+    }
 }
 - (id)safe_singleObjectAtIndex:(NSUInteger)index {
     
@@ -96,7 +106,20 @@
     NSLog(@"NSSingleArray objectAtIndex: 失败");
     return nil;
 }
-
+//非可变的空数组
+- (id)safe_emptyObjectAtIndex:(NSUInteger)index {
+    
+    id object = nil;
+    @try {
+        object = [self safe_emptyObjectAtIndex:index];
+    }
+    @catch (NSException *exception) {
+        NSLog(@"NSArray0 失败");
+    }
+    @finally {
+        return object;
+    }
+}
 @end
 
 #pragma mark - NSMutableArray 访问控制
@@ -107,7 +130,7 @@
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
         
-        Class cls = NSClassFromString(@"__NSArrayM");
+        Class cls = objc_getClass("__NSArrayM");
         [cls swizzleSelector:@selector(objectAtIndex:) withSelector:@selector(safe_objectAtIndex:)];
         [cls swizzleSelector:@selector(objectAtIndexedSubscript:) withSelector:@selector(safe_objectAtIndexedSubscript:)];
         [cls swizzleSelector:@selector(addObject:) withSelector:@selector(safe_addObject:)];
@@ -127,11 +150,16 @@
 }
 - (id)safe_objectAtIndexedSubscript:(NSUInteger)index {
     
-    if (index < self.count) {
-        return [self safe_objectAtIndexedSubscript:index];
+    id object = nil;
+    @try {
+        object = [self safe_objectAtIndexedSubscript:index];
     }
-    NSLog(@"NSMutableArray[] 失败");
-    return nil;
+    @catch (NSException *exception) {
+        NSLog(@"NSMutableArray[] 失败");
+    }
+    @finally {
+        return object;
+    }
 }
 - (void)safe_addObject:(id)anObject {
     

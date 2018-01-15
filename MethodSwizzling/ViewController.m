@@ -30,9 +30,13 @@
 //    NSLog(@"3:%@",[array2 objectAtIndex:1]);
 //    NSLog(@"4:%@",array2[1]);
 //
+     //空数组取值问题
+    NSArray *emptyArray = [[NSArray alloc] init];
+    NSLog(@"%@",emptyArray[0]);
+//    
 //    //3. 测试可变数组取值问题
-    NSMutableArray *mArray = [@[@"111",@"222"] mutableCopy];
-    NSLog(@"1:%@",mArray[2]);
+//    NSMutableArray *mArray = [@[@"111",@"222"] mutableCopy];
+//    NSLog(@"1:%@",mArray[2]);
 //    NSString *s = nil;
 //
 //    //3.1 取出特定位置元素
