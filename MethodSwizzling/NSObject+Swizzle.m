@@ -21,7 +21,7 @@
     //添加 SEL:originSelector -> IMP(swizzledMethod),已存在则返回失败
     BOOL addSucceed = class_addMethod(cls, originSelector, method_getImplementation(swizzledMethod), method_getTypeEncoding(swizzledMethod));//encoding:@12@0:4I8
 
-    //针对数组为例,只有 -objectAtIndexedSubscript:方法执行到 if 语句了,其余的情况执行的是 else 语句🤔
+    //针对数组为例,只有 -objectAtIndexedSubscript:方法执行到 if 语句了(用iOS9测试会执行, iOS11会执行 else, iOS10未测),其余的情况执行的是 else 语句🤔
     if (addSucceed) {
         //替换 SEL:swizzledSelector -> IMP(originMethod),完成交换操作
         class_replaceMethod(cls, swizzledSelector, method_getImplementation(originMethod), method_getTypeEncoding(originMethod));
